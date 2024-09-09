@@ -9,6 +9,9 @@
     
     <!-- Inline CSS to ensure centering and layout -->
     <style>
+      header {
+      display: none;
+      }
       body {
         font-family: Arial, sans-serif;
         display: flex;
