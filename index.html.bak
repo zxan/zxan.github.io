@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>guest@zxan: ~</title>
+  <meta name="description"
+    content="Interactive terminal portfolio — navigate a virtual filesystem to explore projects, skills, and experience.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #000000;
+      --bg-chrome: #111111;
+      --fg: #e0e0e0;
+      --accent: #6eb4e8;
+      --green: #73c990;
+      --yellow: #d7c485;
+      --red: #d98585;
+      --magenta: #b895c9;
+      --dim: #555555;
+      --border: #333333;
+      --selection: rgba(110, 180, 232, 0.2);
+      --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'SF Mono', 'Menlo', monospace;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: #000000;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--fg);
+      overflow: hidden;
+    }
+
+    /* ─── Window Chrome ────────────────────────────────────── */
+    #terminal-window {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      border-radius: 0;
+      overflow: hidden;
+    }
+
+    #title-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 14px;
+      background: var(--bg-chrome);
+      border-bottom: 1px solid var(--border);
+      -webkit-app-region: drag;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .traffic-lights {
+      display: flex;
+      gap: 7px;
+    }
+
+    .traffic-lights span {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: block;
+      background: #444444;
+      border: 1px solid #666666;
+    }
+
+    .tl-red   { background: #444444; }
+    .tl-yellow { background: #555555; }
+    .tl-green  { background: #444444; }
+
+    #title-bar-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--dim);
+      letter-spacing: .3px;
+    }
+
+    /* ─── Terminal Body ────────────────────────────────────── */
+    #terminal {
+      flex: 1;
+      background: var(--bg);
+      padding: 16px 18px 8px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      cursor: text;
+    }
+
+    #terminal::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #terminal::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #terminal::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    #terminal::-webkit-scrollbar-thumb:hover {
+      background: var(--dim);
+    }
+
+    /* ─── Output Lines ─────────────────────────────────────── */
+    #output {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.65;
+    }
+
+    .line-prompt {
+      color: var(--accent);
+    }
+
+    .line-prompt .at {
+      color: var(--dim);
+    }
+
+    .line-prompt .host {
+      color: var(--green);
+    }
+
+    .line-prompt .colon {
+      color: var(--dim);
+    }
+
+    .line-prompt .path {
+      color: var(--yellow);
+    }
+
+    .line-prompt .dollar {
+      color: var(--fg);
+    }
+
+    .line-prompt .cmd {
+      color: var(--fg);
+    }
+
+    .line-output {
+      color: var(--fg);
+    }
+
+    .line-error {
+      color: var(--red);
+    }
+
+    .line-accent {
+      color: var(--accent);
+    }
+
+    .line-green {
+      color: var(--green);
+    }
+
+    .line-yellow {
+      color: var(--yellow);
+    }
+
+    .line-magenta {
+      color: var(--magenta);
+    }
+
+    .line-dim {
+      color: var(--dim);
+    }
+
+    .line-bold {
+      font-weight: 700;
+    }
+
+    .line-header {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .dir-name {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .file-name {
+      color: var(--fg);
+    }
+
+    .file-link {
+      color: var(--green);
+    }
+
+    /* ─── Input Row ────────────────────────────────────────── */
+    #input-line {
+      display: flex;
+      align-items: center;
+      line-height: 1.65;
+      min-height: 1.65em;
+    }
+
+    #input-prompt {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #input-field {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--fg);
+      font-family: var(--font-mono);
+      font-size: inherit;
+      caret-color: var(--accent);
+      line-height: 1.65;
+      padding: 0;
+      margin: 0;
+    }
+
+    /* blinking block cursor via a pseudo-element overlay */
+    .cursor-blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* ─── Boot animation ──────────────────────────────────── */
+    .boot-line {
+      opacity: 0;
+      animation: bootFade .25s ease forwards;
+    }
+
+    .boot-ok {
+      color: var(--green);
+    }
+
+    .boot-label {
+      color: var(--dim);
+    }
+
+    .boot-dots {
+      color: var(--dim);
+    }
+
+    @keyframes bootFade {
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* ─── Mobile Quick Buttons ─────────────────────────────── */
+    #mobile-bar {
+      display: none;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-chrome);
+      border-top: 1px solid var(--border);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex-shrink: 0;
+    }
+
+    #mobile-bar button {
+      background: transparent;
+      border: 1px solid #444444;
+      color: var(--fg);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 0;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+
+    #mobile-bar button:active {
+      background: rgba(255, 255, 255, .1);
+      border-color: var(--fg);
+    }
+
+    /* ─── Neofetch ─────────────────────────────────────────── */
+    .neofetch-row {
+      display: flex;
+      gap: 24px;
+      line-height: 1.5;
+    }
+
+    .neofetch-art {
+      color: var(--accent);
+      white-space: pre;
+      flex-shrink: 0;
+    }
+
+    .neofetch-info {
+      white-space: pre-wrap;
+    }
+
+    .nf-label {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .nf-sep {
+      color: var(--dim);
+    }
+
+    .nf-val {
+      color: var(--fg);
+    }
+
+    .nf-bar {
+      display: inline-flex;
+      gap: 1px;
+    }
+
+    .nf-bar-filled {
+      color: var(--green);
+    }
+
+    .nf-bar-empty {
+      color: var(--dim);
+    }
+
+    .nf-palette {
+      display: inline-block;
+      width: 18px;
+      height: 12px;
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+
+    /* ─── Responsive ───────────────────────────────────────── */
+    @media (max-width: 640px) {
+      #terminal-window {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+      }
+
+      #terminal {
+        padding: 12px 10px 6px;
+        font-size: 13px;
+      }
+
+      #mobile-bar {
+        display: flex;
+      }
+
+      .neofetch-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+
+    /* ─── Selection ────────────────────────────────────────── */
+    ::selection {
+      background: var(--selection);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="terminal-window">
+    <div id="title-bar">
+      <div class="traffic-lights">
+        <span class="tl-red"></span>
+        <span class="tl-yellow"></span>
+        <span class="tl-green"></span>
+      </div>
+      <span id="title-bar-text">guest@zxan: ~</span>
+    </div>
+
+    <div id="terminal" tabindex="-1">
+      <div id="output"></div>
+      <div id="input-line">
+        <span id="input-prompt"></span>
+        <input id="input-field" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+          aria-label="Terminal input">
+      </div>
+    </div>
+
+    <div id="mobile-bar">
+      <button data-cmd="help">help</button>
+      <button data-cmd="ls">ls</button>
+      <button data-cmd="cat about.txt">about</button>
+      <button data-cmd="projects">projects</button>
+      <button data-cmd="contact">contact</button>
+      <button data-cmd="neofetch">neofetch</button>
+      <button data-cmd="clear">clear</button>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════
+    // PART 1 — CONTENT (edit this, never touch the logic below)
+    // ═══════════════════════════════════════════════════════════
+    const CONTENT = {
+      username: 'guest',
+      hostname: 'zxan',
+      fullName: 'Zxan',
+      tagline: 'Full-Stack Developer & Open-Source Enthusiast',
+      resumeUrl: '#resume',          // replace with real URL / path
+      about: [
+        `Hi, I'm Zxan — a full-stack developer who loves building`,
+        `elegant, performant software. I'm passionate about clean`,
+        `architecture, open-source tooling, and making the web a`,
+        `better place one commit at a time.`,
+        ``,
+        `When I'm not coding, you'll find me tinkering with dev`,
+        `tools, reading about distributed systems, or exploring`,
+        `new programming languages.`,
+      ].join('\n'),
+
+      skills: [
+        `─── Languages ──────────────────────────────────`,
+        `  TypeScript · JavaScript · Python · Rust · Go`,
+        `  C++ · SQL · Bash · HTML/CSS`,
+        ``,
+        `─── Frameworks & Libraries ─────────────────────`,
+        `  React · Next.js · Node.js · Express · FastAPI`,
+        `  Tailwind · Three.js · Electron`,
+        ``,
+        `─── Infrastructure & Tooling ───────────────────`,
+        `  Docker · Kubernetes · AWS · GCP · Terraform`,
+        `  PostgreSQL · Redis · MongoDB · Nginx`,
+        `  Git · GitHub Actions · Linux`,
+      ].join('\n'),
+
+      contact: [
+        `─── Reach Me ───────────────────────────────────`,
+        ``,
+        `  Email     →  hello@zxan.dev`,
+        `  GitHub    →  github.com/zxan`,
+        `  LinkedIn  →  linkedin.com/in/zxan`,
+        `  Twitter   →  @zxan_dev`,
+        ``,
+        `  Feel free to reach out — I'm always open to`,
+        `  interesting conversations and collaborations.`,
+      ].join('\n'),
+
+      projects: {
+        'project-1.md': {
+          title: 'DevSync — Real-Time Collaboration Engine',
+          content: [
+            `# DevSync`,
+            `> Real-time collaborative code editor engine`,
+            ``,
+            `Stack: TypeScript, WebSockets, CRDTs, React`,
+            `Repo:  github.com/zxan/devsync`,
+            ``,
+            `A conflict-free replicated data type (CRDT) based`,
+            `engine powering real-time multi-cursor editing with`,
+            `sub-50ms latency. Handles presence, cursors, and`,
+            `operational transforms across distributed peers.`,
+          ].join('\n'),
+        },
+        'project-2.md': {
+          title: 'Infrascope — Cloud Resource Visualizer',
+          content: [
+            `# Infrascope`,
+            `> Interactive cloud infrastructure mapper`,
+            ``,
+            `Stack: Go, D3.js, Terraform Provider SDK`,
+            `Repo:  github.com/zxan/infrascope`,
+            ``,
+            `Parses Terraform state files and renders interactive`,
+            `dependency graphs of your cloud resources. Supports`,
+            `AWS, GCP, and Azure with drill-down cost analysis.`,
+          ].join('\n'),
+        },
+        'project-3.md': {
+          title: 'Patchwork — Git Workflow CLI',
+          content: [
+            `# Patchwork`,
+            `> Opinionated Git workflow accelerator`,
+            ``,
+            `Stack: Rust, Git2-rs`,
+            `Repo:  github.com/zxan/patchwork`,
+            ``,
+            `A blazing-fast CLI that wraps common Git workflows`,
+            `into ergonomic commands. Stacked diffs, auto-rebase,`,
+            `smart branch cleanup, and PR automation built-in.`,
+          ].join('\n'),
+        },
+      },
+
+      experience: {
+        'company-1.md': {
+          title: 'Senior Engineer @ Acme Corp',
+          content: [
+            `# Acme Corp — Senior Software Engineer`,
+            `> 2022 – Present`,
+            ``,
+            `Leading the platform team building internal developer`,
+            `tools and CI/CD infrastructure. Designed a plugin-based`,
+            `build system that cut deployment times by 60%.`,
+            ``,
+            `Key wins:`,
+            `  • Architected microservices migration (monolith → 12 services)`,
+            `  • Built real-time feature flag system serving 2M req/day`,
+            `  • Mentored 4 junior engineers through promotion cycles`,
+          ].join('\n'),
+        },
+        'company-2.md': {
+          title: 'Software Engineer @ StartupXYZ',
+          content: [
+            `# StartupXYZ — Software Engineer`,
+            `> 2019 – 2022`,
+            ``,
+            `Full-stack engineer on the core product team. Shipped`,
+            `the V2 redesign that drove a 40% increase in user`,
+            `retention.`,
+            ``,
+            `Key wins:`,
+            `  • Built GraphQL API layer replacing 30+ REST endpoints`,
+            `  • Implemented end-to-end testing pipeline (Playwright)`,
+            `  • Open-sourced internal component library (500+ GitHub ★)`,
+          ].join('\n'),
+        },
+      },
+
+      // neofetch stats
+      neofetch: {
+        os: 'Web/Linux x86_64',
+        host: 'Terminal Portfolio v1.0',
+        uptime: 'a long time',
+        packages: '∞ (npm)',
+        shell: 'zxan-sh 1.0',
+        editor: 'Neovim / VS Code',
+        languages: 'TS · JS · Python · Rust · Go',
+        coffee: '████████████████░░░░ 82%',
+      },
+    };
+
+
+    // ═══════════════════════════════════════════════════════════
+    // PART 2 — VIRTUAL FILESYSTEM
+    // ═══════════════════════════════════════════════════════════
+    const FS = (() => {
+      // Build tree from CONTENT
+      const tree = {
+        type: 'dir',
+        children: {
+          'about.txt': { type: 'file', content: CONTENT.about },
+          'skills.txt': { type: 'file', content: CONTENT.skills },
+          'contact.txt': { type: 'file', content: CONTENT.contact },
+          'resume.pdf': { type: 'file', content: '[binary — use the `resume` command to open]', link: CONTENT.resumeUrl },
+          'projects': {
+            type: 'dir',
+            children: Object.fromEntries(
+              Object.entries(CONTENT.projects).map(([name, p]) => [name, { type: 'file', content: p.content }])
+            ),
+          },
+          'experience': {
+            type: 'dir',
+            children: Object.fromEntries(
+              Object.entries(CONTENT.experience).map(([name, e]) => [name, { type: 'file', content: e.content }])
+            ),
+          },
+        },
+      };
+
+      let cwd = ['~'];   // path segments, first is always ~
+
+      /** Resolve a path string to segments array */
+      function resolve(pathStr) {
+        if (!pathStr || pathStr === '~') return ['~'];
+        let parts;
+        if (pathStr.startsWith('~/')) {
+          parts = ['~', ...pathStr.slice(2).split('/').filter(Boolean)];
+        } else if (pathStr.startsWith('/')) {
+          parts = ['~', ...pathStr.slice(1).split('/').filter(Boolean)];
+        } else {
+          parts = [...cwd, ...pathStr.split('/').filter(Boolean)];
+        }
+        // resolve . and ..
+        const resolved = [];
+        for (const p of parts) {
+          if (p === '.') continue;
+          if (p === '..') { if (resolved.length > 1) resolved.pop(); continue; }
+          resolved.push(p);
+        }
+        if (resolved.length === 0) resolved.push('~');
+        return resolved;
+      }
+
+      /** Get node at segments */
+      function getNode(segments) {
+        let node = tree;
+        for (let i = 1; i < segments.length; i++) {
+          if (!node || node.type !== 'dir' || !node.children[segments[i]]) return null;
+          node = node.children[segments[i]];
+        }
+        return node;
+      }
+
+      return {
+        getCwd() { return cwd.join('/'); },
+        getCwdShort() { return cwd.length === 1 ? '~' : '~/' + cwd.slice(1).join('/'); },
+
+        cd(pathStr) {
+          const segs = resolve(pathStr);
+          const node = getNode(segs);
+          if (!node) return { ok: false, error: `cd: no such directory: ${pathStr}` };
+          if (node.type !== 'dir') return { ok: false, error: `cd: not a directory: ${pathStr}` };
+          cwd = segs;
+          return { ok: true };
+        },
+
+        ls(pathStr) {
+          const segs = pathStr ? resolve(pathStr) : [...cwd];
+          const node = getNode(segs);
+          if (!node) return { ok: false, error: `ls: cannot access '${pathStr}': No such file or directory` };
+          if (node.type !== 'dir') return { ok: false, error: `ls: '${pathStr}' is not a directory` };
+          const entries = Object.entries(node.children).map(([name, n]) => ({
+            name,
+            isDir: n.type === 'dir',
+          }));
+          entries.sort((a, b) => {
+            if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          });
+          return { ok: true, entries };
+        },
+
+        cat(pathStr) {
+          if (!pathStr) return { ok: false, error: 'cat: missing operand' };
+          const segs = resolve(pathStr);
+          const node = getNode(segs);
+          if (!node) return { ok: false, error: `cat: ${pathStr}: No such file or directory` };
+          if (node.type === 'dir') return { ok: false, error: `cat: ${pathStr}: Is a directory` };
+          return { ok: true, content: node.content, link: node.link };
+        },
+
+        pwd() { return cwd.join('/').replace('~', '/home/' + CONTENT.username); },
+
+        resolve,
+        getNode,
+      };
+    })();
+
+
+    // ═══════════════════════════════════════════════════════════
+    // PART 3 — PARSER / RENDERER
+    // ═══════════════════════════════════════════════════════════
+    (() => {
+      const $ = (s) => document.querySelector(s);
+      const output = $('#output');
+      const inputLine = $('#input-line');
+      const inputEl = $('#input-field');
+      const promptEl = $('#input-prompt');
+      const titleBar = $('#title-bar-text');
+
+      const history = [];
+      let historyIdx = -1;
+      let bootDone = false;
+
+      // ─── Helpers ──────────────────────────────────────────
+      function scrollBottom() {
+        const t = $('#terminal');
+        requestAnimationFrame(() => { t.scrollTop = t.scrollHeight; });
+      }
+
+      function promptHTML() {
+        const p = FS.getCwdShort();
+        return `<span class="line-prompt"><span class="host">${CONTENT.username}</span><span class="at">@</span><span class="host">${CONTENT.hostname}</span><span class="colon">:</span><span class="path">${p}</span><span class="dollar">$&nbsp;</span></span>`;
+      }
+
+      function updatePrompt() {
+        promptEl.innerHTML = promptHTML();
+        titleBar.textContent = `${CONTENT.username}@${CONTENT.hostname}: ${FS.getCwdShort()}`;
+        document.title = `${CONTENT.username}@${CONTENT.hostname}: ${FS.getCwdShort()}`;
+      }
+
+      function printRaw(html) {
+        output.insertAdjacentHTML('beforeend', html);
+      }
+
+      function printLine(text, cls = 'line-output') {
+        const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        printRaw(`<div class="${cls}">${escaped}</div>`);
+      }
+
+      function printLines(lines) {
+        for (const l of lines) {
+          if (typeof l === 'string') printLine(l);
+          else printLine(l.text, l.cls);
+        }
+      }
+
+      function printEcho(cmdText) {
+        printRaw(`<div>${promptHTML()}<span class="line-output">${cmdText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>`);
+      }
+
+      function printBlank() { printRaw('<div>&nbsp;</div>'); }
+
+      // ─── Commands ─────────────────────────────────────────
+      const COMMANDS = {
+        help() {
+          const cmds = [
+            ['help', 'Show this help message'],
+            ['ls [dir]', 'List directory contents'],
+            ['cd [dir]', 'Change directory (supports .., ~)'],
+            ['cat <file>', 'Display file contents'],
+            ['pwd', 'Print working directory'],
+            ['whoami', 'Display identity summary'],
+            ['resume', 'Open resume (PDF)'],
+            ['contact', 'Show contact information'],
+            ['neofetch', 'System info + ASCII art'],
+            ['sudo hire-me', '???'],
+            ['history', 'Show command history'],
+            ['clear', 'Clear terminal'],
+          ];
+          printBlank();
+          printLine('Available commands:', 'line-header');
+          printBlank();
+          for (const [cmd, desc] of cmds) {
+            const padded = cmd.padEnd(18);
+            printRaw(`<div><span class="line-accent">  ${padded.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span><span class="line-dim">${desc}</span></div>`);
+          }
+          printBlank();
+          printLine('  Navigate the filesystem to explore — start with `ls` and `cd`', 'line-dim');
+          printBlank();
+        },
+
+        ls(args) {
+          const target = args[0] || null;
+          const result = FS.ls(target);
+          if (!result.ok) { printLine(result.error, 'line-error'); return; }
+          printBlank();
+          for (const e of result.entries) {
+            const cls = e.isDir ? 'dir-name' : 'file-name';
+            const suffix = e.isDir ? '/' : '';
+            printRaw(`<div class="${cls}">  ${e.name}${suffix}</div>`);
+          }
+          printBlank();
+        },
+
+        cd(args) {
+          const target = args[0] || '~';
+          const result = FS.cd(target);
+          if (!result.ok) printLine(result.error, 'line-error');
+          updatePrompt();
+        },
+
+        cat(args) {
+          if (!args.length) { printLine('cat: missing operand', 'line-error'); return; }
+          const result = FS.cat(args[0]);
+          if (!result.ok) { printLine(result.error, 'line-error'); return; }
+          printBlank();
+          for (const line of result.content.split('\n')) {
+            // simple markdown-ish rendering
+            if (line.startsWith('# ')) {
+              printLine(line.slice(2), 'line-header');
+            } else if (line.startsWith('> ')) {
+              printLine('  ▎ ' + line.slice(2), 'line-dim');
+            } else if (line.startsWith('─')) {
+              printLine(line, 'line-accent');
+            } else {
+              printLine('  ' + line);
+            }
+          }
+          printBlank();
+        },
+
+        pwd() {
+          printLine('  ' + FS.pwd());
+        },
+
+        whoami() {
+          printBlank();
+          printLine(`  ${CONTENT.fullName}`, 'line-accent');
+          printLine(`  ${CONTENT.tagline}`, 'line-dim');
+          printBlank();
+        },
+
+        resume() {
+          if (!CONTENT.resumeUrl || CONTENT.resumeUrl === '#resume') {
+            printLine('  resume: no URL configured — set CONTENT.resumeUrl to enable this.', 'line-yellow');
+            return;
+          }
+          printLine('  Opening resume...', 'line-green');
+          window.open(CONTENT.resumeUrl, '_blank');
+        },
+
+        contact() {
+          COMMANDS.cat(['contact.txt']);
+        },
+
+        neofetch() {
+          const art = [
+            `    ╭──────────╮   `,
+            `    │  ╭────╮  │   `,
+            `    │  │ ▓▓ │  │   `,
+            `    │  ╰────╯  │   `,
+            `    │  ┌─┐┌─┐  │   `,
+            `    │  └─┘└─┘  │   `,
+            `    ╰──────────╯   `,
+            `     ╰──────────╯  `,
+            `       ┃      ┃    `,
+            `    ╭──┸──────┸──╮ `,
+            `    ╰─────────────╯ `,
+          ];
+          const nf = CONTENT.neofetch;
+          const infoLines = [
+            { label: '', val: `${CONTENT.username}@${CONTENT.hostname}`, cls: 'line-accent line-bold' },
+            { label: '', val: '─'.repeat(24), cls: 'line-dim' },
+            { label: 'OS       ', val: nf.os },
+            { label: 'Host     ', val: nf.host },
+            { label: 'Uptime   ', val: nf.uptime },
+            { label: 'Packages ', val: nf.packages },
+            { label: 'Shell    ', val: nf.shell },
+            { label: 'Editor   ', val: nf.editor },
+            { label: 'Languages', val: nf.languages },
+            { label: 'Coffee   ', val: nf.coffee },
+          ];
+
+          printBlank();
+          // Build side-by-side
+          const container = document.createElement('div');
+          container.className = 'neofetch-row';
+
+          const artDiv = document.createElement('div');
+          artDiv.className = 'neofetch-art';
+          artDiv.textContent = art.join('\n');
+
+          const infoDiv = document.createElement('div');
+          infoDiv.className = 'neofetch-info';
+          for (const line of infoLines) {
+            if (line.cls) {
+              infoDiv.insertAdjacentHTML('beforeend',
+                `<div class="${line.cls}">${line.val}</div>`);
+            } else {
+              infoDiv.insertAdjacentHTML('beforeend',
+                `<div><span class="nf-label">${line.label}</span><span class="nf-sep"> → </span><span class="nf-val">${line.val}</span></div>`);
+            }
+          }
+          // Color palette
+          const colors = ['#f07178', '#e6b450', '#7fd962', '#39bae6', '#d4a0ff', '#ff8f40', '#546178', '#c5cdd9'];
+          let paletteHTML = '<div style="margin-top:6px;display:flex;gap:3px">';
+          for (const c of colors) {
+            paletteHTML += `<span class="nf-palette" style="background:${c}"></span>`;
+          }
+          paletteHTML += '</div>';
+          infoDiv.insertAdjacentHTML('beforeend', paletteHTML);
+
+          container.appendChild(artDiv);
+          container.appendChild(infoDiv);
+          output.appendChild(container);
+          printBlank();
+        },
+
+        sudo(args) {
+          if (!args.length) {
+            printLine('  usage: sudo <command>', 'line-error');
+            return;
+          }
+          if (args.join(' ') === 'hire-me') {
+            printBlank();
+            printLine('  [sudo] password for guest: ********', 'line-dim');
+            printLine('  ✓ Permission granted.', 'line-green');
+            printLine('  Sending offer letter to your inbox... 📨', 'line-accent');
+            printLine('  Just kidding — but let\'s talk! Run `contact` 😄', 'line-yellow');
+            printBlank();
+          } else {
+            printLine(`  sudo: ${args[0]}: permission denied`, 'line-error');
+          }
+        },
+
+        history() {
+          printBlank();
+          history.forEach((cmd, i) => {
+            printRaw(`<div><span class="line-dim">  ${String(i + 1).padStart(4)}  </span><span class="line-output">${cmd.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span></div>`);
+          });
+          printBlank();
+        },
+
+        clear() {
+          output.innerHTML = '';
+        },
+
+        // shortcut: `projects` lists all projects
+        projects() {
+          printBlank();
+          printLine('Projects:', 'line-header');
+          printBlank();
+          const entries = Object.entries(CONTENT.projects);
+          for (const [file, proj] of entries) {
+            printRaw(`<div><span class="line-accent">  ${file.padEnd(18)}</span><span class="line-output">${proj.title}</span></div>`);
+          }
+          printBlank();
+          printLine('  Use `cat projects/<filename>` to read details', 'line-dim');
+          printBlank();
+        },
+      };
+
+      // ─── Execute ──────────────────────────────────────────
+      const MAX_HISTORY = 200;
+      function execute(raw) {
+        const trimmed = raw.trim();
+        if (!trimmed) { printEcho(''); return; }
+
+        history.push(trimmed);
+        if (history.length > MAX_HISTORY) history.shift();
+        historyIdx = history.length;
+        printEcho(trimmed);
+
+        const parts = trimmed.split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        const args = parts.slice(1);
+
+        // handle `sudo` specially so we can pass sub-command
+        if (cmd === 'sudo') {
+          COMMANDS.sudo(args);
+        } else if (COMMANDS[cmd]) {
+          COMMANDS[cmd](args);
+        } else {
+          printLine(`  command not found: ${cmd} — type 'help'`, 'line-error');
+        }
+        scrollBottom();
+      }
+
+      // ─── Input Handling ───────────────────────────────────
+      inputEl.addEventListener('keydown', (e) => {
+        if (!bootDone) return;
+        if (e.key === 'Enter') {
+          const val = inputEl.value;
+          inputEl.value = '';
+          execute(val);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (historyIdx > 0) {
+            historyIdx--;
+            inputEl.value = history[historyIdx];
+            // move cursor to end
+            requestAnimationFrame(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length));
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (historyIdx < history.length - 1) {
+            historyIdx++;
+            inputEl.value = history[historyIdx];
+          } else {
+            historyIdx = history.length;
+            inputEl.value = '';
+          }
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          autocomplete(e);
+        } else if (e.key === 'l' && e.ctrlKey) {
+          e.preventDefault();
+          COMMANDS.clear();
+        }
+      });
+
+      // Tab autocomplete — double-tab shows all possibilities
+      let lastTabTime = 0;
+      let lastTabValue = '';
+
+      function autocomplete(e) {
+        const now = Date.now();
+        const val = inputEl.value;
+        const isDoubleTab = (now - lastTabTime < 500) && (val === lastTabValue);
+        lastTabTime = now;
+        lastTabValue = val;
+
+        const parts = val.split(/\s+/);
+        if (parts.length <= 1 && !val.endsWith(' ')) {
+          // autocomplete commands
+          const partial = parts[0].toLowerCase();
+          const matches = Object.keys(COMMANDS).filter(c => c.startsWith(partial));
+          if (matches.length === 1) {
+            inputEl.value = matches[0] + ' ';
+            lastTabValue = inputEl.value;
+          } else if (matches.length > 1) {
+            // fill common prefix
+            const common = commonPrefix(matches);
+            if (common.length > partial.length) {
+              inputEl.value = common;
+              lastTabValue = inputEl.value;
+            }
+            if (isDoubleTab || common.length === partial.length) {
+              showCompletions(matches, false);
+            }
+          }
+        } else {
+          // autocomplete paths
+          const pathPart = parts[parts.length - 1] || '';
+          const slashIdx = pathPart.lastIndexOf('/');
+          let dirPath, prefix;
+          if (slashIdx >= 0) {
+            dirPath = pathPart.slice(0, slashIdx + 1);
+            prefix = pathPart.slice(slashIdx + 1);
+          } else {
+            dirPath = '';
+            prefix = pathPart;
+          }
+          // Resolve the directory to list
+          const lsResult = FS.ls(dirPath || null);
+          if (!lsResult.ok) return;
+          const matches = lsResult.entries.filter(e => e.name.startsWith(prefix));
+          if (matches.length === 1) {
+            const m = matches[0];
+            const completion = dirPath + m.name + (m.isDir ? '/' : '');
+            parts[parts.length - 1] = completion;
+            inputEl.value = parts.join(' ');
+            lastTabValue = inputEl.value;
+          } else if (matches.length > 1) {
+            // fill common prefix of filenames
+            const names = matches.map(m => m.name);
+            const common = commonPrefix(names);
+            if (common.length > prefix.length) {
+              parts[parts.length - 1] = dirPath + common;
+              inputEl.value = parts.join(' ');
+              lastTabValue = inputEl.value;
+            }
+            if (isDoubleTab || common.length === prefix.length) {
+              showCompletions(matches.map(m => m.name + (m.isDir ? '/' : '')), true);
+            }
+          }
+        }
+        // keep cursor at end
+        requestAnimationFrame(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length));
+      }
+
+      function commonPrefix(strings) {
+        if (!strings.length) return '';
+        let pre = strings[0];
+        for (let i = 1; i < strings.length; i++) {
+          while (!strings[i].startsWith(pre)) pre = pre.slice(0, -1);
+        }
+        return pre;
+      }
+
+      function showCompletions(items, isPath) {
+        // echo the current input, then show completions below it
+        printEcho(inputEl.value);
+        printBlank();
+        const perRow = 3;
+        for (let i = 0; i < items.length; i += perRow) {
+          const row = items.slice(i, i + perRow);
+          const formatted = row.map(item => {
+            const padded = item.padEnd(22);
+            const cls = item.endsWith('/') ? 'dir-name' : 'line-accent';
+            return `<span class="${cls}">${padded}</span>`;
+          }).join('');
+          printRaw(`<div>  ${formatted}</div>`);
+        }
+        printBlank();
+        scrollBottom();
+      }
+
+      // Click terminal to focus
+      $('#terminal').addEventListener('click', (e) => {
+        if (e.target === inputEl) return;
+        // Don't steal focus if user is selecting text
+        const sel = window.getSelection();
+        if (sel && sel.toString().length > 0) return;
+        inputEl.focus();
+      });
+
+      // Mobile quick buttons
+      document.querySelectorAll('#mobile-bar button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!bootDone) return;
+          const cmd = btn.dataset.cmd;
+          inputEl.value = '';
+          execute(cmd);
+          inputEl.focus();
+        });
+      });
+
+      // ─── Boot Sequence ────────────────────────────────────
+      async function boot() {
+        inputLine.style.display = 'none';
+
+        const lines = [
+          { msg: 'Initializing terminal...', delay: 180 },
+          { msg: 'Loading font subsystem...', delay: 120 },
+          { msg: 'Mounting virtual filesystem...', delay: 250 },
+          { msg: `Setting hostname → ${CONTENT.hostname}`, delay: 100 },
+          { msg: 'Spawning shell process...', delay: 150 },
+          { msg: `Welcome, ${CONTENT.username}.`, delay: 200 },
+        ];
+
+        let skipped = false;
+        const skipHandler = () => { skipped = true; };
+        document.addEventListener('keydown', skipHandler, { once: true });
+        document.addEventListener('touchstart', skipHandler, { once: true });
+
+        for (let i = 0; i < lines.length; i++) {
+          if (skipped) break;
+          const l = lines[i];
+          const el = document.createElement('div');
+          el.className = 'boot-line';
+          el.style.animationDelay = '0ms';
+          el.innerHTML = `<span class="boot-ok">[ OK ]</span><span class="boot-label"> ${l.msg}</span>`;
+          output.appendChild(el);
+          scrollBottom();
+          await new Promise(r => setTimeout(r, l.delay));
+        }
+
+        document.removeEventListener('keydown', skipHandler);
+        document.removeEventListener('touchstart', skipHandler);
+
+        if (skipped) {
+          // If skipped show them all instantly
+          output.innerHTML = '';
+          for (const l of lines) {
+            printRaw(`<div><span class="boot-ok">[ OK ]</span><span class="boot-label"> ${l.msg}</span></div>`);
+          }
+        }
+
+        await new Promise(r => setTimeout(r, skipped ? 50 : 300));
+
+        printBlank();
+        printRaw(`<div class="line-accent line-bold">  ╭─────────────────────────────────────────────╮</div>`);
+        printRaw(`<div class="line-accent line-bold">  │  ${CONTENT.fullName}'s Terminal Portfolio${' '.repeat(Math.max(0, 22 - CONTENT.fullName.length))}│</div>`);
+        printRaw(`<div class="line-accent line-bold">  ╰─────────────────────────────────────────────╯</div>`);
+        printBlank();
+        printLine(`  Type 'help' to see available commands.`, 'line-green');
+        printBlank();
+
+        inputLine.style.display = 'flex';
+        updatePrompt();
+        inputEl.focus();
+        bootDone = true;
+        scrollBottom();
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+
+</html>
