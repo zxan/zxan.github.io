@@ -718,24 +718,192 @@
     }
 
     @media (max-width: 640px) {
+      body {
+        font-size: 13px;
+      }
+
       #terminal-window {
         width: 100vw;
         height: 100vh;
         height: 100dvh;
       }
 
+      #title-bar,
+      #wm-bar {
+        height: 44px;
+        padding: 0 10px;
+        gap: 8px;
+      }
+
+      #title-bar-text {
+        max-width: 30vw;
+        font-size: 11px;
+      }
+
+      .traffic-lights {
+        gap: 5px;
+      }
+
+      .traffic-lights span {
+        width: 10px;
+        height: 10px;
+      }
+
+      .portal-toggle {
+        position: static;
+        transform: none;
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+
+      .pt-slider,
+      .pt-btn {
+        width: 62px;
+      }
+
+      .pt-btn {
+        font-size: 11px;
+        padding: 6px 0;
+      }
+
       #terminal {
         padding: 12px 10px 6px;
-        font-size: 13px;
+        font-size: 12px;
+      }
+
+      #input-line {
+        align-items: flex-start;
+      }
+
+      #input-field {
+        min-width: 0;
       }
 
       #mobile-bar {
         display: flex;
+        padding: 8px 10px;
+      }
+
+      #mobile-bar button {
+        font-size: 11px;
+        padding: 6px 10px;
+      }
+
+      #wm-bar {
+        justify-content: flex-start;
+      }
+
+      .wm-tag {
+        max-width: 92px;
+        font-size: 11px;
+      }
+
+      .wm-bar-right {
+        margin-left: auto;
+        gap: 8px;
+        font-size: 11px;
+      }
+
+      #wm-bar .portal-toggle {
+        margin-left: 8px;
+      }
+
+      #wm-coffee {
+        display: none;
+      }
+
+      #wm-grid {
+        padding: 8px;
+        gap: 8px;
+      }
+
+      .wm-tile-head {
+        padding: 7px 10px;
+      }
+
+      .wm-tile-body {
+        padding: 10px;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .wm-card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .wm-card {
+        padding: 9px 10px;
+      }
+
+      .wm-card-title,
+      .wm-card-meta,
+      .wm-contact-value {
+        overflow-wrap: anywhere;
+      }
+
+      .wm-contact-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .wm-contact-link {
+        min-width: 0;
+        width: 100%;
+        padding: 8px 10px;
       }
 
       .neofetch-row {
         flex-direction: column;
         gap: 10px;
+      }
+
+      .neofetch-art {
+        max-width: 100%;
+        overflow-x: auto;
+        font-size: 11px;
+      }
+
+      .neofetch-info {
+        overflow-wrap: anywhere;
+      }
+
+      #wm-footer {
+        padding: 8px 10px;
+        font-size: 11px;
+        text-align: center;
+      }
+
+      .fw-overlay {
+        padding: 8px;
+      }
+
+      .fw-window {
+        max-height: calc(100dvh - 16px);
+      }
+
+      .fw-title {
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .fw-body {
+        padding: 12px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      #title-bar-text,
+      .wm-tag {
+        display: none;
+      }
+
+      .pt-slider,
+      .pt-btn {
+        width: 58px;
       }
     }
 
